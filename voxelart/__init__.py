@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Final
 import time
 
-PREFIX: Final = "%"
+PREFIX_PLACE: Final = "%"
+PREFIX_CONFIGURE: Final = "&"
 PALETTE: Final = {
     (134, 98, 191): "amethyst_block []",
     (85, 85, 85): "bedrock []",
@@ -191,55 +192,77 @@ PALETTE: Final = {
 def launch(address: str, port: int, root_dir: Path) -> None:
     server = Server()
 
+    cfg_swapxz = False
+
     @server.server_event
     async def ready(ctx: ReadyContext) -> None:
         print(f"LIVE at {ctx.host}:{ctx.port}")
 
     @server.game_event
     async def player_message(ctx: PlayerMessageContext) -> None:
+        nonlocal cfg_swapxz
+
         if ctx.sender == NAME:
             return
 
         message = ctx.message
-        if not message.startswith(PREFIX):
-            return
+        if message.startswith(PREFIX_PLACE):
+            path = (root_dir / message.removeprefix(PREFIX_PLACE).strip()).with_suffix(".xyzrgb")
+            model_name = path.stem
+            
+            if ".." in path.parts:
+                await ctx.reply(ui.red("Error: Cannot use `..` for paths"))
+                return
+            if not path.exists():
+                await ctx.reply(ui.red("Error: The provided path does not exist"))
+                return
+            if not path.is_file():
+                await ctx.reply(ui.red("Error: The provided path does not point to a file"))
+                return
 
-        path = (root_dir / message.removeprefix(PREFIX).strip()).with_suffix(".xyzrgb")
-        model_name = path.stem
+            await ctx.server.run(f"inputpermission set {ctx.sender} movement disabled")
+            await ctx.server.run(f"gamemode spectator {ctx.sender}")
         
-        if ".." in path.parts:
-            await ctx.reply(ui.red("Error: Cannot use `..` for paths"))
-            return
-        if not path.exists():
-            await ctx.reply(ui.red("Error: The provided path does not exist"))
-            return
-        if not path.is_file():
-            await ctx.reply(ui.red("Error: The provided path does not point to a file"))
-            return
+            with path.open("r") as f:
+                lines = list(f.readlines())
 
-        await ctx.server.run(f"inputpermission set {ctx.sender} movement disabled")
-        await ctx.server.run(f"gamemode spectator {ctx.sender}")
-    
-        with path.open("r") as f:
-            lines = list(f.readlines())
+            start = time.perf_counter()
+            count = len(lines)
+            max_x = 0
+            max_y = 0
+            max_z = 0
+            for i, line in enumerate(lines, start = 1):
+                x, y, z, r, g, b = map(int, line.split(" "))
+                max_x = max(max_x, x)
+                max_y = max(max_y, y)
+                max_z = max(max_z, z)
+                if cfg_swapxz:
+                    location = f"~{z} ~{y} ~{z}"
+                else:
+                    location = f"~{x} ~{y} ~{z}"
+                closest_rgb = rgbmatch.closest_rgb((r, g, b), PALETTE.keys())
+                block = PALETTE[closest_rgb]
+                perc = round(i / count * 100)
+                await ctx.server.run(f"setblock {location} {block}", wait=False)
+                await ctx.server.run(f"title @a actionbar {perc}%", wait=False)
+                print(f"{perc}%\r", end="")
+            print("Done!")
 
-        start = time.perf_counter()
-        count = len(lines)
-        for i, line in enumerate(lines, start = 1):
-            x, y, z, r, g, b = map(int, line.split(" "))
-            closest_rgb = rgbmatch.closest_rgb((r, g, b), PALETTE.keys())
-            block = PALETTE[closest_rgb]
-            perc = round(i / count * 100)
-            await ctx.server.run(f"setblock ~{x} ~{y} ~{z} {block}", wait=False)
-            await ctx.server.run(f"title @a actionbar {perc}%", wait=False)
-            print(f"{perc}%\r", end="")
-        print("Done!")
+            end = time.perf_counter()
+            took = end - start
+            
+            await ctx.server.run(f"inputpermission set {ctx.sender} movement enabled")
+            await ctx.server.run(f"gamemode creative {ctx.sender}")
+            await ctx.reply(ui.green(f"Success: Built model '{model_name}' (took ~{took:.2f}s) (size {max_x}x{max_y}x{max_z})"))
 
-        end = time.perf_counter()
-        took = end - start
-        
-        await ctx.server.run(f"inputpermission set {ctx.sender} movement enabled")
-        await ctx.server.run(f"gamemode creative {ctx.sender}")
-        await ctx.reply(ui.green(f"Success: Built model '{model_name}' (took ~{took:.2f}s)"))
+        elif message.startswith(PREFIX_CONFIGURE):
+            command = message.removeprefix(PREFIX_CONFIGURE)
+            match command:
+                case "swapxz yes":
+                    cfg_swapxz = True
+                case "swapxz no":
+                    cfg_swapxz = False
+                case _:
+                    await ctx.reply(ui.red(f"Error: Unknown command {command}"))
 
     server.start(address, port)

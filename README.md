@@ -37,6 +37,13 @@ and `--port` (e.g. `voxelart --address localhost --port 8000 share`).
 > Ensure the entire area is loaded properly.
 
 
+## Commands
+
+- `%foo` - Place the model named `foo`
+- `&swapxz yes` - Swap X and Y coordinates when placing model
+- `&swapxz no` - Don't swap X and Y coordinates when placing model
+
+
 ## Links
 
 - [Troubleshooting](https://bedrockpy.readthedocs.io/en/latest/troubleshooting.html)

@@ -237,7 +237,7 @@ def launch(address: str, port: int, root_dir: Path) -> None:
                 max_y = max(max_y, y)
                 max_z = max(max_z, z)
                 if cfg_swapxz:
-                    location = f"~{z} ~{y} ~{z}"
+                    location = f"~{z} ~{y} ~{x}"
                 else:
                     location = f"~{x} ~{y} ~{z}"
                 closest_rgb = rgbmatch.closest_rgb((r, g, b), PALETTE.keys())

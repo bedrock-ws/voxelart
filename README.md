@@ -1,5 +1,8 @@
 # voxelart - Create voxel art for Minecraft BE worlds
 
+![Example Statue](./screenshots/britebomber.jpg)
+
+
 ## Installation
 
 ```console

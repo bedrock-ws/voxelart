@@ -43,8 +43,8 @@ and `--port` (e.g. `voxelart --address localhost --port 8000 share`).
 ## Commands
 
 - `%foo` - Place the model named `foo`
-- `&swapxz yes` - Swap X and Y coordinates when placing model
-- `&swapxz no` - Don't swap X and Y coordinates when placing model
+- `&swapxz yes` - Swap X and Z coordinates when placing model
+- `&swapxz no` - Don't swap X and Z coordinates when placing model
 
 
 ## Links
